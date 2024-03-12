@@ -1,0 +1,57 @@
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	v.Local.sSQL.Declare
+	V.Local.sDateEff.Declare
+	V.Local.sDateEff2.Declare
+
+	'RRC 05/29/2019
+	'To run in GS Task Scheduler
+	
+	F.ODBC.Connection!conX.OpenCompanyConnection
+	
+	F.Intrinsic.Control.CallSub(CheckTable)
+	
+	V.Local.sSQL.Set("SELECT CUSTOMER, PART_REV, LOCATION, DATE_EFFECTIVE FROM GAB_4861_CPP_END_DTE WHERE END_DATE < CURDATE()")
+	F.ODBC.Connection!conX.OpenRecordsetRW("rst",V.Local.sSQL)
+	F.Intrinsic.Control.dountil(V.odbc.conX!rst.EOF,=,True)
+		F.Intrinsic.String.Format(V.ODBC.conX!rst.FieldVal!DATE_EFFECTIVE,"yyyymmdd",V.Local.sDateEff)
+		F.Intrinsic.String.Format(V.ODBC.conX!rst.FieldVal!DATE_EFFECTIVE,"YYYY-MM-DD",V.Local.sDateEff2)
+		F.Intrinsic.String.Build("DELETE FROM OE_C_PART_PRICE WHERE KEY_TYPE='CP' AND CUSTOMER ='{0}' AND PART = '{1}' AND LOCATION = '{2}' AND DATE_EFFECTIVE = '{3}';",V.ODBC.conX!rst.FieldValTrim!CUSTOMER,V.ODBC.conX!rst.FieldValTrim!PART_REV,V.ODBC.conX!rst.FieldValTrim!LOCATION,V.Local.sDateEff,V.Local.sSQL)
+		F.ODBC.Connection!conX.Execute(v.Local.sSQL)
+		F.Intrinsic.String.Build("DELETE FROM GAB_4861_CPP_END_DTE WHERE CUSTOMER ='{0}' AND PART_REV = '{1}' AND LOCATION = '{2}' AND DATE_EFFECTIVE = '{3}';",V.ODBC.conX!rst.FieldValTrim!CUSTOMER,V.ODBC.conX!rst.FieldValTrim!PART_REV,V.ODBC.conX!rst.FieldValTrim!LOCATION,V.Local.sDateEff2,V.Local.sSQL)
+		F.ODBC.Connection!conX.Execute(v.Local.sSQL)
+		F.odbc.conX!rst.MoveNext
+	F.Intrinsic.Control.Loop
+	F.ODBC.conX!rst.Close
+	F.ODBC.Connection!conX.Close
+	F.Intrinsic.Control.End
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.CheckTable.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.bExists.Declare
+	
+	F.ODBC.Connection!conX.TableExists("GAB_4861_CPP_END_DTE",V.Local.bExists)
+	F.Intrinsic.Control.If(V.Local.bExists,=,False)
+		F.ODBC.Connection!conX.Execute("CREATE TABLE GAB_4861_CPP_END_DTE(CUSTOMER CHAR(6),PART_REV CHAR(25),END_DATE DATE, LOCATION CHAR(2), DATE_EFFECTIVE DATE);")
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.CheckTable.End
