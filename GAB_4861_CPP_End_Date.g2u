@@ -1,0 +1,184 @@
+Program.Sub.ScreenSU.Start
+Gui.frmMain..Create
+Gui.frmMain..Caption("End Date")
+Gui.frmMain..Size(3405,1440)
+Gui.frmMain..MinX(0)
+Gui.frmMain..MinY(0)
+Gui.frmMain..Position(0,0)
+Gui.frmMain..BackColor(-2147483633)
+Gui.frmMain..MousePointer(0)
+Gui.frmMain..Event(UnLoad,frmMain_UnLoad)
+Gui.frmMain..MaxButton(False)
+Gui.frmMain..MinButton(False)
+Gui.frmMain..Sizeable(False)
+Gui.frmMain.lblEndDate.Create(Label,"End Date",True,825,255,0,195,210,True,3,"Arial",8,-2147483633,0)
+Gui.frmMain.dtpMain.Create(DatePicker)
+Gui.frmMain.dtpMain.Size(1935,285)
+Gui.frmMain.dtpMain.Position(1125,120)
+Gui.frmMain.cmdSave.Create(Button)
+Gui.frmMain.cmdSave.Size(855,375)
+Gui.frmMain.cmdSave.Position(2205,525)
+Gui.frmMain.cmdSave.Caption("Save")
+Gui.frmMain.cmdSave.Event(Click,cmdSave_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+	V.Global.sCustomer.Declare
+	V.Global.sPartRev.Declare
+	V.Global.sLoc.Declare
+	V.Global.dEffDate.Declare
+	
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	V.Local.iDayEffD.Declare(Long)
+	V.Local.iMonthEffD.Declare(Long)
+	V.Local.iYearEffD.Declare(Long)
+	V.Local.sIcon.Declare
+	'RRC 05/29/2019
+	'Contract Part Pricing
+	'Assign to hook 45310 (Populate) and 45320 (Scrip 1- execute)
+	F.Intrinsic.Control.If(v.Caller.Hook,=,45310)
+		v.Passed.000059.Set("End Date")
+	F.Intrinsic.Control.Else
+		v.Global.sCustomer.Set(v.Passed.000002)
+		v.Global.sPartRev.Set(v.Passed.000001)
+		V.Global.sLoc.Set(V.Passed.000016)
+		
+		F.Intrinsic.String.Left(V.Passed.000017,2,V.Local.iMonthEffD)
+		F.Intrinsic.String.Right(V.Passed.000017,2,V.Local.iYearEffD)
+		F.Intrinsic.String.Mid(V.Passed.000017,3,2,V.Local.iDayEffD)
+		
+		F.Intrinsic.Date.DateSerial(V.Local.iYearEffD,V.Local.iMonthEffD,V.Local.iDayEffD,V.Global.dEffDate)
+		
+		F.ODBC.Connection!conX.OpenCompanyConnection
+		
+		F.Intrinsic.Control.CallSub(CheckTable)
+		
+		F.Intrinsic.Control.If(v.Global.sCustomer,=,"")
+			F.Intrinsic.Control.If(v.Global.sPartRev,=,"")
+				F.Intrinsic.UI.Msgbox("Please select a customer and a part before setting a contract end date.","Select Customer and Part")
+			F.Intrinsic.Control.Else
+				F.Intrinsic.UI.Msgbox("Please select a customer before setting a contract end date.","Select Customer")
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.ElseIf(v.Global.sPartRev,=,"")
+			F.Intrinsic.Control.If(v.Global.sCustomer,=,"")
+				F.Intrinsic.UI.Msgbox("Please select a customer and a part before setting a contract end date.","Select Customer and Part")
+			F.Intrinsic.Control.Else
+				F.Intrinsic.UI.Msgbox("Please select a part before setting a contract end date.","Select Part")
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Else
+		F.Intrinsic.String.Build("{0}\gss2.ico",v.Caller.GasDir,v.Local.sIcon)
+		Gui.frmMain..Icon(v.Local.sIcon)
+		
+		F.Intrinsic.Control.CallSub(LoadDate)
+		
+		Gui.frmMain..Show
+		
+		F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.CheckTable.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	V.Local.bExists.Declare
+		
+
+	F.ODBC.Connection!conX.TableExists("GAB_4861_CPP_END_DTE",V.Local.bExists)
+	F.Intrinsic.Control.If(V.Local.bExists,=,False)
+		F.ODBC.Connection!conX.Execute("CREATE TABLE GAB_4861_CPP_END_DTE(CUSTOMER CHAR(6),PART_REV CHAR(25),END_DATE DATE, LOCATION CHAR(2), DATE_EFFECTIVE DATE);")
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.CheckTable.End
+
+Program.Sub.cmdSave_Click.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	v.Local.sSQL.Declare
+	v.Local.sRet.Declare
+	v.Local.sDate.Declare
+	
+	v.Local.sDate.Set(v.Screen.frmMain!dtpMain.Text)
+	
+	F.Intrinsic.Control.If(v.DataTable.dtMain.RowCount,=,0)
+		F.Intrinsic.String.Build("INSERT INTO GAB_4861_CPP_END_DTE VALUES('{0}', '{1}', '{2}', '{3}', '{4}');",v.Global.sCustomer,v.Global.sPartRev,v.Local.sDate.PervasiveDate,V.Global.sLoc,V.Global.dEffDate.PervasiveDate,v.Local.sSQL)
+		F.ODBC.Connection!conX.Execute(v.Local.sSQL)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.String.Build("UPDATE GAB_4861_CPP_END_DTE SET END_DATE = '{0}' WHERE CUSTOMER = '{1}' AND PART_REV = '{2}' AND LOCATION ='{3}' AND DATE_EFFECTIVE = '{4}';",v.Local.sDate.PervasiveDate,v.Global.sCustomer,v.Global.sPartRev,V.Global.sLoc,V.Global.dEffDate.PervasiveDate,v.Local.sSQL)
+		F.ODBC.Connection!conX.Execute(v.Local.sSQL)
+	F.Intrinsic.Control.EndIf
+	
+	F.Data.DataTable.Close("dtMain")
+	
+	Gui.frmMain..Visible(false)
+
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+	
+Program.Sub.cmdSave_Click.End
+
+Program.Sub.frmMain_UnLoad.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	F.ODBC.Connection!conX.Close
+	F.Intrinsic.Control.End
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+
+Program.Sub.frmMain_UnLoad.End
+
+Program.Sub.LoadDate.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	v.Local.sDate.Declare
+	v.Local.sSQL.Declare
+	
+	F.Intrinsic.String.Format(V.Global.dEffDate,"YYYY-MM-DD",V.Local.sDate)
+
+	F.Intrinsic.String.Build("SELECT * FROM GAB_4861_CPP_END_DTE WHERE CUSTOMER = '{0}' AND PART_REV = '{1}' AND LOCATION = '{2}' AND DATE_EFFECTIVE ='{3}';",v.Global.sCustomer,v.Global.sPartRev,V.Global.sLoc,V.Local.sDate,v.Local.sSQL)
+	
+	F.Intrinsic.Control.If(v.DataTable.dtMain.Exists)
+		F.Data.DataTable.Close("dtMain")
+	F.Intrinsic.Control.EndIf
+	
+	F.Data.DataTable.CreateFromSQL("dtMain","conX",v.Local.sSQL,true)	
+	
+	F.Intrinsic.Control.If(v.DataTable.dtMain.RowCount,>,0)
+		v.Local.sDate.Set(v.DataTable.dtMain(0).END_DATE!FieldValTrim)
+		Gui.frmMain.dtpMain.Value(v.Local.sDate)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+	
+Program.Sub.LoadDate.End
